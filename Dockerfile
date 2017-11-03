@@ -27,6 +27,7 @@ ENV PHP_SHA256 "edc6a7c3fe89419525ce51969c5f48610e53613235bbef255c3a4db33b458083
 ENV PHP_SOURCE "/usr/src/php"
 ENV PHP_HOME "/usr/local/php"
 ENV PHP_CONF_DIR $PHP_HOME"/etc"
+ENV PHP_CONF_FILE $PHP_CONF_DIR"/php.ini"
 ENV PHP_CONF_DIR_SCAN $PHP_CONF_DIR"/conf.d"
 ENV PATH "$PHP_HOME/bin":$PATH
 # phpmyadmin
@@ -238,27 +239,15 @@ RUN mkdir -p "$HTTPD_HOME" \
 	#---------------
 	# openrc service
 	#---------------
-        && apk update && apk add openrc \ 
-        # Tell openrc its running inside a container, till now that has meant LXC 
-        && sed -i 's/#rc_sys=""/rc_sys="lxc"/g' /etc/rc.conf \ 
-        # Tell openrc loopback and net are already there, since docker handles the networking 
-        && echo 'rc_provide="loopback net"' >> /etc/rc.conf \ 
-        # no need for loggers 
-        && sed -i 's/^#\(rc_logger="YES"\)$/\1/' /etc/rc.conf \ 
-        # can't get ttys unless you run the container in privileged mode 
-        && sed -i '/tty/d' /etc/inittab \ 
-        # can't set hostname since docker sets it 
-        && sed -i 's/hostname $opts/# hostname $opts/g' /etc/init.d/hostname \ 
-        # can't mount tmpfs since not privileged 
-        && sed -i 's/mount -t tmpfs/# mount -t tmpfs/g' /lib/rc/sh/init.sh \ 
-        # can't do cgroups 
-        && sed -i 's/"cgroup_add_service/" # cgroup_add_service/g' /lib/rc/sh/openrc-run.sh \ 
- 
+        && apk update && apk add openrc \         
+    # can't do cgroups
+    && sed -i 's/"cgroup_add_service/" # cgroup_add_service/g' /lib/rc/sh/openrc-run.sh \
+
  	# -----------
 	# ~. clean up
 	# -----------
-	&& rm -rf /var/cache/apk/* /tmp/* 
-	
+	&& rm -rf /var/cache/apk/* /tmp/* 	
+
 # =========
 # Configure
 # =========

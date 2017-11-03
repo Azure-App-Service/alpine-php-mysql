@@ -31,14 +31,6 @@ start_mariadb(){
     mysql -u root -e "CREATE DATABASE IF NOT EXISTS azurelocaldb; FLUSH PRIVILEGES;"
 }
 
-test ! -d "$APP_HOME" && echo "INFO: $APP_HOME not found. creating..." && mkdir -p "$APP_HOME"
-chown -R www-data:www-data $APP_HOME
-
-test ! -d "$HTTPD_LOG_DIR" && echo "INFO: $HTTPD_LOG_DIR not found. creating..." && mkdir -p "$HTTPD_LOG_DIR"
-chown -R www-data:www-data $HTTPD_LOG_DIR
-
-echo "Setup openrc ..." && openrc && touch /run/openrc/softlevel
-
 #unzip phpmyadmin
 setup_phpmyadmin(){
     test ! -d "$PHPMYADMIN_HOME" && echo "INFO: $PHPMYADMIN_HOME not found. creating..." && mkdir -p "$PHPMYADMIN_HOME"
@@ -49,30 +41,44 @@ setup_phpmyadmin(){
     chown -R www-data:www-data $PHPMYADMIN_HOME
 }
 
-#setup MariaDB
-echo "INFO: loading local MariaDB and phpMyAdmin ..."
-echo "Setting up MariaDB data dir ..."
-setup_mariadb_data_dir
-echo "Setting up MariaDB log dir ..."
-test ! -d "$MARIADB_LOG_DIR" && echo "INFO: $MARIADB_LOG_DIR not found. creating ..." && mkdir -p "$MARIADB_LOG_DIR"
-chown -R mysql:mysql $MARIADB_LOG_DIR
-echo "Starting local MariaDB ..."
-start_mariadb
+test ! -d "$APP_HOME" && echo "INFO: $APP_HOME not found. creating..." && mkdir -p "$APP_HOME"
+chown -R www-data:www-data $APP_HOME
 
-echo "Granting user for phpMyAdmin ..."
-# Set default value of username/password if they are't exist/null.
-PHPMYADMIN_USERNAME=${PHPMYADMIN_USERNAME:-phpmyadmin}
-PHPMYADMIN_PASSWORD=${PHPMYADMIN_PASSWORD:-MS173m_QN}
-echo "phpmyadmin username:"
-echo "$PHPMYADMIN_USERNAME"
-echo "phpmyadmin password:"
-echo "$PHPMYADMIN_PASSWORD"
-mysql -u root -e "GRANT ALL ON *.* TO \`$PHPMYADMIN_USERNAME\`@'localhost' IDENTIFIED BY '$PHPMYADMIN_PASSWORD' WITH GRANT OPTION; FLUSH PRIVILEGES;"
-echo "Installing phpMyAdmin ..."
-setup_phpmyadmin
-echo "Loading phpMyAdmin conf ..."
-if ! grep -q "^Include conf/httpd-phpmyadmin.conf" $HTTPD_CONF_FILE; then
-    echo 'Include conf/httpd-phpmyadmin.conf' >> $HTTPD_CONF_FILE
+test ! -d "$HTTPD_LOG_DIR" && echo "INFO: $HTTPD_LOG_DIR not found. creating..." && mkdir -p "$HTTPD_LOG_DIR"
+chown -R www-data:www-data $HTTPD_LOG_DIR
+
+echo "Setup openrc ..." && openrc && touch /run/openrc/softlevel
+
+DATABASE_TYPE=$(echo ${DATABASE_TYPE}|tr '[A-Z]' '[a-z]')
+
+if [ "${DATABASE_TYPE}" == "local" ]; then  
+    echo 'mysql.default_socket = /run/mysqld/mysqld.sock' >> $PHP_CONF_FILE     
+    echo 'mysqli.default_socket = /run/mysqld/mysqld.sock' >> $PHP_CONF_FILE     
+    #setup MariaDB
+    echo "INFO: loading local MariaDB and phpMyAdmin ..."
+    echo "Setting up MariaDB data dir ..."
+    setup_mariadb_data_dir
+    echo "Setting up MariaDB log dir ..."
+    test ! -d "$MARIADB_LOG_DIR" && echo "INFO: $MARIADB_LOG_DIR not found. creating ..." && mkdir -p "$MARIADB_LOG_DIR"
+    chown -R mysql:mysql $MARIADB_LOG_DIR
+    echo "Starting local MariaDB ..."
+    start_mariadb
+
+    echo "Granting user for phpMyAdmin ..."
+    # Set default value of username/password if they are't exist/null.
+    DATABASE_USERNAME=${DATABASE_USERNAME:-phpmyadmin}
+    DATABASE_PASSWORD=${DATABASE_PASSWORD:-MS173m_QN}
+    echo "phpmyadmin username:"
+    echo "$DATABASE_USERNAME"
+    echo "phpmyadmin password:"
+    echo "$DATABASE_PASSWORD"
+    mysql -u root -e "GRANT ALL ON *.* TO \`$DATABASE_USERNAME\`@'localhost' IDENTIFIED BY '$DATABASE_PASSWORD' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+    echo "Installing phpMyAdmin ..."
+    setup_phpmyadmin
+    echo "Loading phpMyAdmin conf ..."
+    if ! grep -q "^Include conf/httpd-phpmyadmin.conf" $HTTPD_CONF_FILE; then
+        echo 'Include conf/httpd-phpmyadmin.conf' >> $HTTPD_CONF_FILE
+    fi
 fi
 
 echo "Starting SSH ..."
