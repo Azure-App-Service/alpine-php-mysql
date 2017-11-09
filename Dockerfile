@@ -198,6 +198,9 @@ RUN mkdir -p "$HTTPD_HOME" \
 		--with-mhash \
 		### for phpmyadmin
 		--with-mysqli=mysqlnd \
+		--with-mysql=mysqlnd \
+		--with-libedit \
+        --with-pcre-regex=/usr \ 
 		--with-openssl \
 		### see http://php.net/manual/en/mysqlinfo.library.choosing.php
 		--with-pdo-mysql=mysqlnd \
